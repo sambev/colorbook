@@ -1,6 +1,175 @@
 [[ extends 'base.html' ]]
     [[ block body ]]
         <div class="center">
-        <canvas data-processing-sources="/static/pde/ColorBookWeb.pde"></canvas>
+        <div class="row">
+            <div class="span12">
+                <div class="body_container dark_bg shadow txtshadow rounded">
+                    <div class="pad center">
+                        <canvas style="height: 400px; width:400px;" id="bookcanvas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script type="text/processing" data-processing-target="bookcanvas">
+            import processing.pdf.*;
+            class colorList {
+              ArrayList names;
+              int[] colors;
+              int count = 0;
+
+              colorList() {
+                names = new ArrayList();
+                colors = new int[500];
+              }  
+
+              void addColor(String newName, int newColor) {
+                newName = newName.toUpperCase();
+                if (nameExists(newName) == false) {
+                  names.add(newName);
+                  colors[count] = newColor;
+                  count++;
+                }
+              }
+
+              boolean nameExists(String checkName) {
+                checkName = checkName.toUpperCase();
+                for (int i=0;i<names.size();i++) {
+                  String listItem = (String) names.get(i);
+                  if (checkName.equals(listItem)) {
+                    return true;
+                  }
+                }
+                return false;
+              }
+
+              int getColor(String requestName) {
+                requestName = requestName.toUpperCase();
+                for (int i=0;i<names.size();i++) {
+                  String listItem = (String) names.get(i);
+                  if (requestName.equals(listItem)) {
+                    int returnColor = colors[i]; 
+                    return returnColor;
+                  }
+                }
+                return 0;
+              }
+            }
+
+            class ColorWord {
+              String lineText;
+              int wordIndex;
+              String word;
+              color c;
+              ColorWord(String newLineText, int newWordIndex, String newWord, int newC) {
+                lineText = newLineText;
+                wordIndex = newWordIndex;
+                word = newWord;
+                c = color(newC);
+              }
+            }
+
+
+            colorList colors;
+            ArrayList colorWords;
+            int canvasDimension;
+            float cubeWidth;
+            ArrayList colorsUsed;
+
+            String fileName = "/static/uploads/[- filename -]";
+            PGraphics canvas;
+
+
+            void setup() {
+              //size(2000, 2000);
+              size(500, 500); //set display size
+              noSmooth(); //make sure it doesn't optomize so pixels scale up
+              
+              //initialize object arrays
+              colors = new colorList(); //color library list
+              colorWords = new ArrayList(); //text to be analyzed
+              colorsUsed = new ArrayList(); //color words found
+
+              //load colors into colors array
+              loadColors(); 
+
+              //scan word information into colorWords array
+              loadText(fileName);
+
+              //use total wordcount to build canvas
+              canvasDimension = ceil(sqrt(colorWords.size())); //the square root will give you a squared shape
+
+              fill(0);
+              rect(100,100,100,100);  
+              
+              //build canvas
+              drawCanvas(); 
+
+              //save(fileName+ ".png"); //save image file
+              
+              debug(); 
+            }
+
+            void draw(){
+              drawCanvas(); 
+            }
+
+            void drawCanvas() {
+              //begin drawing
+
+              cubeWidth = floor(width/canvasDimension);
+              for (int i=0; i<colorWords.size(); i++) {
+                ColorWord thisWord = (ColorWord) colorWords.get(i);
+                fill(thisWord.c);
+                stroke(100);    //outline colors
+                rect(i%canvasDimension*cubeWidth, floor(i/canvasDimension)*cubeWidth,cubeWidth,cubeWidth);
+              }
+
+            }
+
+
+            void loadText(String file) {
+              String lines[] = loadStrings(file);
+
+              for (int i=0; i < lines.length; i++) {
+                String words[] = splitTokens(lines[i], "'.,/:;- ");
+                for (int t=0; t < words.length; t++) {
+                  if (colors.nameExists(words[t])) {
+                    colorWords.add(new ColorWord(lines[i], t, words[t], colors.getColor(words[t])));
+                    useColor(words[t]);
+                  }
+                }
+              }
+            }
+
+            void loadColors() {
+              String lines[] = loadStrings("/static/text/colorlist.csv");
+              for (int i=0; i < lines.length; i++) {
+                String words[] = split(lines[i], ",");
+                //println(words[1]);
+                colors.addColor(words[0], color(unhex(words[1])));
+              }
+            }
+
+            void useColor(String newColor) {
+              newColor = newColor.toLowerCase();
+              boolean used = false;
+              for (int i=0;i<colorsUsed.size();i++) {
+                String checkColor = (String) colorsUsed.get(i);
+                if (checkColor.equals(newColor)) {
+                  used = true;
+                }
+              }
+
+              if (used == false) {
+                colorsUsed.add(newColor);
+              }
+            }
+
+            void debug(){
+              println("Words: " + colorWords.size());
+              println(colorsUsed);
+            }  
+        </script>
+        <script type="text/javascript" src="/static/js/processing-1.4.1.min.js"></script> 
         </div>
     [[ endblock ]]
